@@ -1,23 +1,45 @@
 from django.db import models
+from django.core.validators import MinValueValidator
 
 
 class Promotion(models.Model):
     description = models.CharField(max_length=255)
     discount = models.FloatField()
 
+    def __str__(self):
+        return self.description
+
 
 class Collection(models.Model):
     title = models.CharField(max_length=255)
+    featured_product = models.ForeignKey(
+        "Product", on_delete=models.SET_NULL, null=True, related_name="+"
+    )
+
+    def __str__(self):
+        return self.title
+
+    class meta:
+        ordering = ["title"]
 
 
 class Product(models.Model):
     title = models.CharField(max_length=255)
-    Collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
-    description = models.TextField()
-    price = models.DecimalField(max_digits=6, decimal_places=2)
-    inventory = models.IntegerField()
+    slug = models.SlugField(null=True)
+    collection = models.ForeignKey(Collection, on_delete=models.PROTECT)
+    description = models.TextField(null=True, blank=True)
+    price = models.DecimalField(
+        max_digits=6, decimal_places=2, validators=[MinValueValidator(0)]
+    )
+    inventory = models.IntegerField(validators=[MinValueValidator(0)])
     last_update = models.DateTimeField(auto_now=True)
-    promotions = models.ManyToManyField(Promotion)
+    promotions = models.ManyToManyField(Promotion, blank=True)
+
+    def __str__(self):
+        return self.title
+
+    class meta:
+        ordering = ["title"]
 
 
 class Customer(models.Model):
@@ -32,6 +54,12 @@ class Customer(models.Model):
         default="B",
     )
 
+    def __str__(self):
+        return f"{self.first_name} {self.last_name}"
+
+    class meta:
+        ordering = ["first_name", "last_name"]
+
 
 class Order(models.Model):
     placed_at = models.DateTimeField(auto_now_add=True)
@@ -41,6 +69,9 @@ class Order(models.Model):
         choices=(("P", "Pending"), ("C", "Complete"), ("F", "Failed")),
         default="P",
     )
+
+    class meta:
+        ordering = ["-placed_at"]
 
 
 class OrderItem(models.Model):
